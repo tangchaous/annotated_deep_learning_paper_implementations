@@ -42,6 +42,13 @@ class PrepareForMultiHeadAttention(nn.Module):
     """
 
     def __init__(self, d_model: int, heads: int, d_k: int, bias: bool):
+        """
+        INPUTS:
+        - d_model: int :: dim of `inputs`??
+        - heads: int   :: number of heads
+        - d_k: int     :: dim of `key`??
+        - bias: bool   :: used in `Linear` 
+        """
         super().__init__()
         # Linear layer for linear transform
         self.linear = nn.Linear(d_model, heads * d_k, bias=bias)
@@ -51,9 +58,11 @@ class PrepareForMultiHeadAttention(nn.Module):
         self.d_k = d_k
 
     def forward(self, x: torch.Tensor):
-        # Input has shape `[seq_len, batch_size, d_model]` or `[batch_size, d_model]`.
-        # We apply the linear transformation to the last dimension and split that into
-        # the heads.
+        """ Apply the linear transformation to the last dimension and split that into the heads.
+        
+        INPUTS:
+        - x: torch.Tensor :: of shape `[seq_len, batch_size, d_model]` or `[batch_size, d_model]`
+        """
         head_shape = x.shape[:-1]
 
         # Linear transform
@@ -67,30 +76,24 @@ class PrepareForMultiHeadAttention(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    r"""
-    <a id="MHA"></a>
+    """Multi-Head Attention Module, which computes scaled multi-headed attention for given `query`, `key` and `value` vectors.
 
-    ## Multi-Head Attention Module
+    $$\mathop{Attention}(Q, K, V) = \underset{seq}{\mathop{softmax}} \Bigg(\frac{Q K^\top}{\sqrt{d_k}}\Bigg) V$$
 
-    This computes scaled multi-headed attention for given `query`, `key` and `value` vectors.
-
-    $$\mathop{Attention}(Q, K, V) = \underset{seq}{\mathop{softmax}}\Bigg(\frac{Q K^\top}{\sqrt{d_k}}\Bigg)V$$
-
-    In simple terms, it finds keys that matches the query, and gets the values of
-     those keys.
-
-    It uses dot-product of query and key as the indicator of how matching they are.
-    Before taking the $softmax$ the dot-products are scaled by $\frac{1}{\sqrt{d_k}}$.
-    This is done to avoid large dot-product values causing softmax to
-    give very small gradients when $d_k$ is large.
-
-    Softmax is calculated along the axis of of the sequence (or time).
+    In simple terms, it finds keys that matches the query, and gets the values of those keys.
+    1. It uses dot-product of query and key as the indicator of how matching they are.
+    2. Before taking the $softmax$ the dot-products are scaled by $\frac{1}{\sqrt{d_k}}$. 
+        This is done to avoid large dot-product values causing softmax to give very small gradients when $d_k$ is large.
+    3. Softmax is calculated along the axis of of the sequence (or time).
     """
 
     def __init__(self, heads: int, d_model: int, dropout_prob: float = 0.1, bias: bool = True):
         """
-        * `heads` is the number of heads.
-        * `d_model` is the number of features in the `query`, `key` and `value` vectors.
+        
+        - heads: int          :: the number of heads.
+        - d_model: int        :: no. of features in `query`, `key` and `value` vectors; no. of features will be `d_k = d_model // heads`
+        - dropout_prob: float :: 
+        - bias: bool          :: 
         """
 
         super().__init__()
@@ -150,13 +153,9 @@ class MultiHeadAttention(nn.Module):
                 value: torch.Tensor,
                 mask: Optional[torch.Tensor] = None):
         """
-        `query`, `key` and `value` are the tensors that store
-        collection of *query*, *key* and *value* vectors.
-        They have shape `[seq_len, batch_size, d_model]`.
-
-        `mask` has shape `[seq_len, seq_len, batch_size]` and
-        `mask[i, j, b]` indicates whether for batch `b`,
-        query at position `i` has access to key-value at position `j`.
+        - `query`, `key` and `value` are the tensors of shape `[seq_len, batch_size, d_model]`
+        - `mask` has shape `[seq_len, seq_len, batch_size]`
+            `mask[i, j, b]` indicates whether for batch `b`, query at position `i` has access to key-value at position `j`.
         """
 
         # `query`, `key` and `value`  have shape `[seq_len, batch_size, d_model]`
